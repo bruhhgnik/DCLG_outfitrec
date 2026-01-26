@@ -6,6 +6,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Product } from "@/types";
 import { searchProducts } from "@/lib/api";
+import { useCart } from "@/context/CartContext";
 
 export default function Header() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -14,6 +15,7 @@ export default function Header() {
   const [isLoading, setIsLoading] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+  const { itemCount } = useCart();
 
   // Debounced search as user types
   useEffect(() => {
@@ -75,34 +77,15 @@ export default function Header() {
 
   return (
     <header className="sticky top-0 z-50 bg-white border-b border-gray-200">
-      <div className="max-w-7xl mx-auto px-4">
+      <div className="px-4 sm:px-8 lg:px-16 xl:px-24">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link href="/" className="text-xl font-bold tracking-tight">
-            OUTFIT STUDIO
+            CULTURE STUDIO
           </Link>
 
-          {/* Navigation */}
-          <nav className="hidden md:flex items-center space-x-8">
-            <Link href="/products" className="text-sm uppercase tracking-wide hover:text-gray-600">
-              Shop All
-            </Link>
-            <Link href="/products?category=tops" className="text-sm uppercase tracking-wide hover:text-gray-600">
-              Tops
-            </Link>
-            <Link href="/products?category=bottoms" className="text-sm uppercase tracking-wide hover:text-gray-600">
-              Bottoms
-            </Link>
-            <Link href="/products?category=footwear" className="text-sm uppercase tracking-wide hover:text-gray-600">
-              Footwear
-            </Link>
-            <Link href="/products?category=accessories" className="text-sm uppercase tracking-wide hover:text-gray-600">
-              Accessories
-            </Link>
-          </nav>
-
           {/* Search & Actions */}
-          <div className="flex items-center space-x-4" ref={searchRef}>
+          <div className="flex items-center space-x-2" ref={searchRef}>
             {isSearchOpen ? (
               <div className="relative">
                 <form onSubmit={handleSearch} className="flex items-center">
@@ -200,27 +183,31 @@ export default function Header() {
                 </svg>
               </button>
             )}
+
+            {/* Cart Icon */}
+            <Link
+              href="/cart"
+              className="p-2 hover:bg-gray-100 rounded-full relative"
+              aria-label="Cart"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.5}
+                  d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
+                />
+              </svg>
+              {itemCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-5 h-5 bg-black text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                  {itemCount > 99 ? "99+" : itemCount}
+                </span>
+              )}
+            </Link>
           </div>
         </div>
       </div>
 
-      {/* Mobile Navigation */}
-      <nav className="md:hidden border-t border-gray-100">
-        <div className="flex overflow-x-auto scrollbar-hide">
-          <Link href="/products" className="flex-shrink-0 px-4 py-3 text-xs uppercase tracking-wide">
-            Shop All
-          </Link>
-          <Link href="/products?category=tops" className="flex-shrink-0 px-4 py-3 text-xs uppercase tracking-wide">
-            Tops
-          </Link>
-          <Link href="/products?category=bottoms" className="flex-shrink-0 px-4 py-3 text-xs uppercase tracking-wide">
-            Bottoms
-          </Link>
-          <Link href="/products?category=footwear" className="flex-shrink-0 px-4 py-3 text-xs uppercase tracking-wide">
-            Footwear
-          </Link>
-        </div>
-      </nav>
     </header>
   );
 }

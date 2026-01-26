@@ -21,6 +21,7 @@ function ProductsContent() {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [filtersLoading, setFiltersLoading] = useState(true);
+  const [showFilters, setShowFilters] = useState(false);
 
   const [categories, setCategories] = useState<string[]>([]);
   const [brands, setBrands] = useState<string[]>([]);
@@ -159,40 +160,64 @@ function ProductsContent() {
     [router, selectedCategory, selectedBrand, selectedColor, selectedSlot]
   );
 
+  const hasActiveFilters = selectedCategory || selectedBrand || selectedColor || selectedSlot;
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
       {/* Page Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-light">
-          {selectedCategory || selectedSlot || "All Products"}
-        </h1>
-        <p className="text-sm text-gray-500 mt-2">
-          {total} {total === 1 ? "product" : "products"}
-        </p>
+      <div className="mb-8 flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-light">
+            {selectedCategory || selectedSlot || "All Products"}
+          </h1>
+          <p className="text-sm text-gray-500 mt-2">
+            {total} {total === 1 ? "product" : "products"}
+          </p>
+        </div>
+
+        {/* Filter Toggle Button */}
+        <button
+          onClick={() => setShowFilters(!showFilters)}
+          className={`flex items-center gap-2 px-4 py-2 border transition-colors ${
+            showFilters || hasActiveFilters
+              ? "bg-black text-white border-black"
+              : "border-gray-300 hover:border-black"
+          }`}
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+          </svg>
+          <span className="text-sm">Filter</span>
+          {hasActiveFilters && (
+            <span className="w-2 h-2 bg-white rounded-full"></span>
+          )}
+        </button>
       </div>
 
       <div className="flex flex-col md:flex-row gap-8">
-        {/* Sidebar */}
-        <div className="w-full md:w-56 flex-shrink-0">
-          {filtersLoading ? (
-            <div className="animate-pulse space-y-4">
-              {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="h-12 bg-gray-100 rounded"></div>
-              ))}
-            </div>
-          ) : (
-            <FilterSidebar
-              categories={categories}
-              brands={brands}
-              colors={colors}
-              selectedCategory={selectedCategory}
-              selectedBrand={selectedBrand}
-              selectedColor={selectedColor}
-              selectedSlot={selectedSlot}
-              onFilterChange={updateFilters}
-            />
-          )}
-        </div>
+        {/* Sidebar - Hidden by default */}
+        {showFilters && (
+          <div className="w-full md:w-56 flex-shrink-0">
+            {filtersLoading ? (
+              <div className="animate-pulse space-y-4">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="h-12 bg-gray-100 rounded"></div>
+                ))}
+              </div>
+            ) : (
+              <FilterSidebar
+                categories={categories}
+                brands={brands}
+                colors={colors}
+                selectedCategory={selectedCategory}
+                selectedBrand={selectedBrand}
+                selectedColor={selectedColor}
+                selectedSlot={selectedSlot}
+                onFilterChange={updateFilters}
+              />
+            )}
+          </div>
+        )}
 
         {/* Product Grid */}
         <div className="flex-1">

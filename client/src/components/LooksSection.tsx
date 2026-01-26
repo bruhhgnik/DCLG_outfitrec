@@ -3,8 +3,9 @@
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Product, Look, LooksResponse } from "@/types";
+import { Product, Look, LooksResponse, LookItem } from "@/types";
 import { generateLooks } from "@/lib/api";
+import { useCart } from "@/context/CartContext";
 
 interface LooksSectionProps {
   baseProduct: Product;
@@ -14,7 +15,9 @@ export default function LooksSection({ baseProduct }: LooksSectionProps) {
   const [looks, setLooks] = useState<Look[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [animatingLook, setAnimatingLook] = useState<{ id: string; count: number } | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const { addLookToCart } = useCart();
 
   useEffect(() => {
     async function fetchLooks() {
@@ -59,6 +62,26 @@ export default function LooksSection({ baseProduct }: LooksSectionProps) {
       }
     }
     return items;
+  };
+
+  // Get all items in a look for adding to cart
+  const getAllLookItems = (look: Look): LookItem[] => {
+    return Object.values(look.items);
+  };
+
+  const handleGetThisLook = (look: Look, lookIndex: number) => {
+    const allItems = getAllLookItems(look);
+
+    // Trigger animation
+    setAnimatingLook({ id: look.id, count: allItems.length });
+
+    // Add items to cart
+    addLookToCart(look.id, `Look ${lookIndex + 1}`, allItems);
+
+    // Clear animation after 800ms
+    setTimeout(() => {
+      setAnimatingLook(null);
+    }, 800);
   };
 
   if (loading) {
@@ -119,74 +142,90 @@ export default function LooksSection({ baseProduct }: LooksSectionProps) {
       >
         {looks.map((look, index) => {
           const outfitItems = getOutfitItems(look);
+          const isAnimating = animatingLook?.id === look.id;
 
           return (
             <div
               key={look.id}
-              className="flex-shrink-0 w-[280px] sm:w-[420px] lg:w-[520px] bg-white border border-gray-200 rounded-lg p-3 sm:p-4 lg:p-5"
+              className="flex-shrink-0 w-[280px] sm:w-[420px] lg:w-[520px] bg-white border border-gray-200 rounded-lg p-3 sm:p-4 lg:p-5 relative"
               style={{ scrollSnapAlign: "start" }}
             >
               {/* Look Header */}
               <h3 className="text-sm sm:text-base font-medium mb-3 sm:mb-4">Look {index + 1}</h3>
 
-              <div className="flex gap-3 sm:gap-4 lg:gap-5 items-start">
-                {/* Left: Base Product Image */}
-                <div className="w-[100px] sm:w-[140px] lg:w-[160px] flex-shrink-0">
-                  <div className="relative bg-gray-100 rounded-lg aspect-[3/4]">
-                    {/* Pin Icon */}
-                    <button className="absolute top-2 right-2 z-10 w-6 h-6 sm:w-7 sm:h-7 bg-gray-800 hover:bg-black rounded-full flex items-center justify-center transition-colors">
-                      <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-                      </svg>
-                    </button>
-                    <Image
-                      src={baseProduct.image_url || "/placeholder.svg"}
-                      alt={baseProduct.title || baseProduct.type}
-                      fill
-                      className="object-contain p-2 sm:p-3"
-                      sizes="(max-width: 640px) 100px, (max-width: 1024px) 140px, 160px"
-                    />
+              {/* Content wrapper with blur effect */}
+              <div className={`transition-all duration-200 ${isAnimating ? "blur-sm" : ""}`}>
+                <div className="flex gap-3 sm:gap-4 lg:gap-5 items-start">
+                  {/* Left: Base Product Image */}
+                  <div className="w-[100px] sm:w-[140px] lg:w-[160px] flex-shrink-0">
+                    <div className="relative bg-gray-100 rounded-lg aspect-[3/4] overflow-hidden">
+                      <Image
+                        src={baseProduct.image_url || "/placeholder.svg"}
+                        alt={baseProduct.title || baseProduct.type}
+                        fill
+                        className="object-contain p-2 sm:p-3"
+                        sizes="(max-width: 640px) 100px, (max-width: 1024px) 140px, 160px"
+                      />
+                    </div>
+                    <p className="mt-2 text-[10px] sm:text-xs text-gray-700 line-clamp-2">
+                      {baseProduct.title || baseProduct.type}
+                    </p>
                   </div>
-                  <p className="mt-2 text-[10px] sm:text-xs text-gray-700 line-clamp-2">
-                    {baseProduct.title || baseProduct.type}
-                  </p>
-                </div>
 
-                {/* Right: Outfit Items List */}
-                <div className="flex-1 space-y-2 sm:space-y-2.5">
-                  {outfitItems.map(({ item }) => (
-                    <Link
-                      key={item.sku_id}
-                      href={`/product/${item.sku_id}`}
-                      className="flex gap-2 sm:gap-3 group"
-                    >
-                      {/* Item Thumbnail */}
-                      <div className="w-[48px] h-[48px] sm:w-[56px] sm:h-[56px] lg:w-[64px] lg:h-[64px] flex-shrink-0 bg-gray-50 rounded border border-gray-100 relative overflow-hidden">
-                        <Image
-                          src={item.image_url || "/placeholder.svg"}
-                          alt={item.title}
-                          fill
-                          className="object-contain p-1 group-hover:scale-105 transition-transform"
-                          sizes="64px"
-                        />
-                      </div>
-                      {/* Item Info */}
-                      <div className="flex-1 min-w-0 py-0.5">
-                        <p className="text-[11px] sm:text-xs lg:text-sm font-medium text-gray-900 line-clamp-2 group-hover:underline leading-tight">
-                          {item.title}
-                        </p>
-                        <p className="text-[10px] sm:text-xs text-gray-500 mt-0.5">{item.brand}</p>
-                      </div>
-                    </Link>
-                  ))}
+                  {/* Right: Outfit Items List */}
+                  <div className="flex-1 space-y-2 sm:space-y-2.5">
+                    {outfitItems.map(({ item }) => (
+                      <Link
+                        key={item.sku_id}
+                        href={`/product/${item.sku_id}`}
+                        className="flex gap-2 sm:gap-3 group"
+                      >
+                        {/* Item Thumbnail */}
+                        <div className="w-[48px] h-[48px] sm:w-[56px] sm:h-[56px] lg:w-[64px] lg:h-[64px] flex-shrink-0 bg-gray-50 rounded border border-gray-100 relative overflow-hidden">
+                          <Image
+                            src={item.image_url || "/placeholder.svg"}
+                            alt={item.title}
+                            fill
+                            className="object-contain p-1 group-hover:scale-105 transition-transform"
+                            sizes="64px"
+                          />
+                        </div>
+                        {/* Item Info */}
+                        <div className="flex-1 min-w-0 py-0.5">
+                          <p className="text-[11px] sm:text-xs lg:text-sm font-medium text-gray-900 line-clamp-2 group-hover:underline leading-tight">
+                            {item.title}
+                          </p>
+                          <p className="text-[10px] sm:text-xs text-gray-500 mt-0.5">{item.brand}</p>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
                 </div>
               </div>
+
+              {/* Added to Cart Overlay */}
+              {isAnimating && (
+                <div className="absolute inset-0 flex items-center justify-center bg-white/60 animate-fade-in">
+                  <div className="bg-black text-white px-4 py-2 rounded text-sm font-medium animate-scale-in">
+                    {animatingLook.count} items added to cart
+                  </div>
+                </div>
+              )}
+
+              {/* Get This Look Button */}
+              <button
+                onClick={() => handleGetThisLook(look, index)}
+                disabled={isAnimating}
+                className="w-full mt-4 py-2.5 sm:py-3 bg-black text-white text-xs sm:text-sm font-medium hover:bg-gray-800 transition-colors disabled:opacity-50"
+              >
+                Get This Look
+              </button>
             </div>
           );
         })}
       </div>
 
-      {/* Custom scrollbar hide style */}
+      {/* Custom scrollbar hide style and animations */}
       <style jsx>{`
         .scrollbar-hide::-webkit-scrollbar {
           display: none;
@@ -194,6 +233,30 @@ export default function LooksSection({ baseProduct }: LooksSectionProps) {
         .scrollbar-hide {
           -ms-overflow-style: none;
           scrollbar-width: none;
+        }
+        @keyframes fade-in {
+          from {
+            opacity: 0;
+          }
+          to {
+            opacity: 1;
+          }
+        }
+        @keyframes scale-in {
+          from {
+            opacity: 0;
+            transform: scale(0.9);
+          }
+          to {
+            opacity: 1;
+            transform: scale(1);
+          }
+        }
+        .animate-fade-in {
+          animation: fade-in 0.2s ease-out forwards;
+        }
+        .animate-scale-in {
+          animation: scale-in 0.2s ease-out forwards;
         }
       `}</style>
     </div>

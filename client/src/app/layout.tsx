@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Space_Mono } from "next/font/google";
 import "./globals.css";
 import Header from "@/components/Header";
+import { CartProvider } from "@/context/CartContext";
 
 const spaceMono = Space_Mono({
   weight: ["400", "700"],
@@ -14,8 +15,8 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "Outfit Studio | AI-Powered Style Recommendations",
-    template: "%s | Outfit Studio",
+    default: "Culture Studio | AI-Powered Style Recommendations",
+    template: "%s | Culture Studio",
   },
   description:
     "Discover perfectly coordinated outfits with AI-powered recommendations. Get personalized style suggestions and complete looks for any occasion.",
@@ -29,15 +30,15 @@ export const metadata: Metadata = {
     "outfit ideas",
     "fashion recommendations",
   ],
-  authors: [{ name: "Outfit Studio" }],
-  creator: "Outfit Studio",
-  publisher: "Outfit Studio",
+  authors: [{ name: "Culture Studio" }],
+  creator: "Culture Studio",
+  publisher: "Culture Studio",
   openGraph: {
     type: "website",
     locale: "en_US",
     url: SITE_URL,
-    siteName: "Outfit Studio",
-    title: "Outfit Studio | AI-Powered Style Recommendations",
+    siteName: "Culture Studio",
+    title: "Culture Studio | AI-Powered Style Recommendations",
     description:
       "Discover perfectly coordinated outfits with AI-powered recommendations. Get personalized style suggestions and complete looks for any occasion.",
     images: [
@@ -45,13 +46,13 @@ export const metadata: Metadata = {
         url: "/og-image.png",
         width: 1200,
         height: 630,
-        alt: "Outfit Studio - AI-Powered Fashion",
+        alt: "Culture Studio - AI-Powered Fashion",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Outfit Studio | AI-Powered Style Recommendations",
+    title: "Culture Studio | AI-Powered Style Recommendations",
     description:
       "Discover perfectly coordinated outfits with AI-powered recommendations.",
     images: ["/og-image.png"],
@@ -88,13 +89,15 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${spaceMono.className} antialiased min-h-screen uppercase`}>
-        <Header />
-        <main>{children}</main>
-        <footer className="border-t border-gray-200 mt-16 py-8">
-          <div className="max-w-7xl mx-auto px-4 text-center text-sm text-gray-500">
-            <p>Outfit Studio - AI-Powered Fashion Recommendations</p>
-          </div>
-        </footer>
+        <CartProvider>
+          <Header />
+          <main className="sm:px-8 lg:px-16 xl:px-24">{children}</main>
+          <footer className="border-t border-gray-200 mt-16 py-8">
+            <div className="px-4 sm:px-8 lg:px-16 xl:px-24 text-center text-sm text-gray-500">
+              <p>Culture Studio - AI-Powered Fashion Recommendations</p>
+            </div>
+          </footer>
+        </CartProvider>
       </body>
     </html>
   );
