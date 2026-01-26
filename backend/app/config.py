@@ -25,15 +25,14 @@ class Settings(BaseSettings):
     product_metadata_path: str = "../product_metadata.json"
 
     # API
-    api_title: str = "JobMaxing API"
+    api_title: str = "DCLG Outfit Recommender API"
     api_version: str = "1.0.0"
     cors_origins: list[str] = [
         "http://localhost:3000",
         "http://localhost:3001",
-        "http://localhost:5173",
         "http://127.0.0.1:3000",
-        "http://127.0.0.1:3001",
-        "http://127.0.0.1:5173",
+        "https://*.vercel.app",
+        "https://dclg-outfitrec.vercel.app",
     ]
 
     @property
