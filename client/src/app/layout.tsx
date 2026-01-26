@@ -1,6 +1,13 @@
 import type { Metadata, Viewport } from "next";
+import { Space_Mono } from "next/font/google";
 import "./globals.css";
 import Header from "@/components/Header";
+
+const spaceMono = Space_Mono({
+  weight: ["400", "700"],
+  subsets: ["latin"],
+  display: "swap",
+});
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
@@ -80,7 +87,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="antialiased min-h-screen">
+      <body className={`${spaceMono.className} antialiased min-h-screen uppercase`}>
         <Header />
         <main>{children}</main>
         <footer className="border-t border-gray-200 mt-16 py-8">

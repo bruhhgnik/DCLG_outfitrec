@@ -14,9 +14,11 @@ html {
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: 'Helvetica Neue', Arial, sans-serif;
+  font-family: 'Space Mono', monospace;
   min-width: 320px;
   width: 100%;
+  text-transform: uppercase;
+  letter-spacing: -0.05em;
 }
 
 /* H&M-inspired minimal scrollbar */
@@ -39,4 +41,19 @@ body {
 /* Clean transitions */
 * {
   transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+/* Ensure all text elements are uppercase */
+h1, h2, h3, h4, h5, h6,
+p, span, a, button, label,
+input, textarea, select {
+  text-transform: uppercase;
+  font-family: 'Space Mono', monospace;
+  letter-spacing: -0.05em;
+}
+
+/* Preserve case for input values if needed */
+input::placeholder,
+textarea::placeholder {
+  text-transform: uppercase;
 }

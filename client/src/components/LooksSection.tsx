@@ -72,7 +72,7 @@ export default function LooksSection({ baseProduct }: LooksSectionProps) {
         </div>
         <div className="flex gap-3 overflow-hidden">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="flex-shrink-0 w-[280px] sm:w-[420px] lg:w-[520px] h-[320px] sm:h-[380px] bg-gray-100 rounded-lg animate-pulse" />
+            <div key={i} className="flex-shrink-0 w-[280px] sm:w-[420px] lg:w-[520px] min-h-[280px] sm:min-h-[320px] bg-gray-100 rounded-lg animate-pulse" />
           ))}
         </div>
       </div>
@@ -129,9 +129,9 @@ export default function LooksSection({ baseProduct }: LooksSectionProps) {
               {/* Look Header */}
               <h3 className="text-sm sm:text-base font-medium mb-3 sm:mb-4">Look {index + 1}</h3>
 
-              <div className="flex gap-3 sm:gap-4 lg:gap-5">
+              <div className="flex gap-3 sm:gap-4 lg:gap-5 items-start">
                 {/* Left: Base Product Image */}
-                <div className="w-[100px] sm:w-[160px] lg:w-[200px] flex-shrink-0">
+                <div className="w-[100px] sm:w-[140px] lg:w-[160px] flex-shrink-0">
                   <div className="relative bg-gray-100 rounded-lg aspect-[3/4]">
                     {/* Pin Icon */}
                     <button className="absolute top-2 right-2 z-10 w-6 h-6 sm:w-7 sm:h-7 bg-gray-800 hover:bg-black rounded-full flex items-center justify-center transition-colors">
@@ -144,7 +144,7 @@ export default function LooksSection({ baseProduct }: LooksSectionProps) {
                       alt={baseProduct.title || baseProduct.type}
                       fill
                       className="object-contain p-2 sm:p-3"
-                      sizes="(max-width: 640px) 100px, (max-width: 1024px) 160px, 200px"
+                      sizes="(max-width: 640px) 100px, (max-width: 1024px) 140px, 160px"
                     />
                   </div>
                   <p className="mt-2 text-[10px] sm:text-xs text-gray-700 line-clamp-2">
@@ -153,7 +153,7 @@ export default function LooksSection({ baseProduct }: LooksSectionProps) {
                 </div>
 
                 {/* Right: Outfit Items List */}
-                <div className="flex-1 space-y-2 sm:space-y-2.5 overflow-y-auto max-h-[200px] sm:max-h-[280px] lg:max-h-[300px]">
+                <div className="flex-1 space-y-2 sm:space-y-2.5">
                   {outfitItems.map(({ item }) => (
                     <Link
                       key={item.sku_id}
