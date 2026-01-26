@@ -1,0 +1,63 @@
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+ENV/
+.venv/
+*.egg-info/
+dist/
+build/
+
+# Node
+node_modules/
+.next/
+out/
+.vercel
+
+# Data files (large - download separately)
+downloaded_images/
+stockx_scrapeddata/
+stockx_consolidated/
+compatibility_graph_scored.json
+product_metadata.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+nul
+
+# Logs
+*.log
+npm-debug.log*
+
+# Temp/test files
+*.png
+*.jpg
+*.jpeg
+*.webp
+*.csv
+products_missing_*.json
+vision_model_template.json
+new_products_breakdown.txt
+
+# Development scripts (not needed for deployment)
+stockx_scrape/
+qwenassistant/
+look_generator/
+*.ps1
+test_*.py
+.claude/
