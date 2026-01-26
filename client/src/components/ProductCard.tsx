@@ -23,12 +23,12 @@ export default function ProductCard({ product, showScore }: ProductCardProps) {
 
   return (
     <Link href={`/product/${product.sku_id}`} className="group block">
-      <div className="relative aspect-square bg-gray-50 overflow-hidden rounded">
+      <div className="relative aspect-square bg-white border border-gray-100 overflow-hidden rounded">
         <Image
           src={getImageUrl()}
           alt={product.title || product.type}
           fill
-          className="object-contain p-2 sm:p-4 group-hover:scale-105 transition-transform duration-300"
+          className="object-contain p-1 sm:p-3 group-hover:scale-105 transition-transform duration-300"
           onError={() => setImageError(true)}
           sizes="(max-width: 640px) 45vw, (max-width: 1024px) 30vw, 23vw"
         />
