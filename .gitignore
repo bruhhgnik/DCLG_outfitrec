@@ -22,11 +22,11 @@ node_modules/
 out/
 .vercel
 
-# Data files (large - download separately)
+# Data files (large)
 downloaded_images/
 stockx_scrapeddata/
 stockx_consolidated/
-compatibility_graph_scored.json
+# compatibility_graph_scored.json  <- included in repo for deployment
 product_metadata.json
 
 # IDE
