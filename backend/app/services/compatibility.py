@@ -78,7 +78,7 @@ class CompatibilityGraph:
                 SELECT sku_2, target_slot, score
                 FROM compatibility_edges
                 WHERE sku_1 = $1 AND LOWER(target_slot) = LOWER($2) AND score >= $3
-                ORDER BY score DESC
+                ORDER BY score DESC, sku_2
                 LIMIT $4
             """
             params = [sku_id, slot, min_score, limit]
@@ -87,7 +87,7 @@ class CompatibilityGraph:
                 SELECT sku_2, target_slot, score
                 FROM compatibility_edges
                 WHERE sku_1 = $1 AND score >= $2
-                ORDER BY target_slot, score DESC
+                ORDER BY LOWER(target_slot), score DESC, sku_2
             """
             params = [sku_id, min_score]
 
@@ -132,7 +132,7 @@ class CompatibilityGraph:
             SELECT sku_2, target_slot, score
             FROM compatibility_edges
             WHERE sku_1 = $1
-            ORDER BY LOWER(target_slot), score DESC
+            ORDER BY LOWER(target_slot), score DESC, sku_2
         """
 
         async with pool.acquire() as conn:
@@ -161,6 +161,119 @@ class CompatibilityGraph:
                 self._pair_score_cache[(item["sku"], sku_id)] = item["score"]
 
         return result
+
+    async def get_compatible_with_cross_scores(
+        self,
+        sku_id: str,
+        candidates_per_slot: int = 25
+    ) -> tuple[dict[str, list[dict]], dict[tuple[str, str], float]]:
+        """
+        Get compatible items AND cross-scores in a SINGLE database query.
+
+        Uses a CTE to:
+        1. Find all items compatible with the base SKU
+        2. Find all pairwise scores between those candidates
+
+        Returns:
+            - compatible_by_slot: {slot_name: [{"sku": str, "score": float}, ...]}
+            - pair_scores: {(sku1, sku2): score} - includes base->item AND item->item scores
+        """
+        # Check cache - use a special marker to track if cross-scores have been fetched
+        cross_scores_cache_key = f"_cross_scores_fetched_{sku_id}_{candidates_per_slot}"
+
+        if sku_id in self._compatible_cache and cross_scores_cache_key in self._compatible_cache:
+            compatible_by_slot = self._compatible_cache[sku_id]
+            # Limit to candidates_per_slot
+            limited = {slot: items[:candidates_per_slot] for slot, items in compatible_by_slot.items()}
+
+            # Rebuild pair_scores from pair_score_cache
+            pair_scores: dict[tuple[str, str], float] = {}
+            for items in limited.values():
+                for item in items:
+                    # Add base->item score
+                    pair_scores[(sku_id, item["sku"])] = item["score"]
+                    pair_scores[(item["sku"], sku_id)] = item["score"]
+
+            # Get cross-scores from cache (only pairs that exist)
+            for key, score in self._pair_score_cache.items():
+                pair_scores[key] = score
+
+            return limited, pair_scores
+
+        pool = await get_db()
+
+        # Single query with CTE - fetches everything in one network round-trip
+        query = """
+            WITH candidates AS (
+                -- Get top N candidates per slot for the base SKU
+                SELECT sku_2, target_slot, score,
+                       ROW_NUMBER() OVER (PARTITION BY LOWER(target_slot) ORDER BY score DESC, sku_2) as rn
+                FROM compatibility_edges
+                WHERE sku_1 = $1
+            ),
+            limited_candidates AS (
+                SELECT sku_2, target_slot, score
+                FROM candidates
+                WHERE rn <= $2
+            ),
+            cross_scores AS (
+                -- Get all pairwise scores between candidates
+                SELECT e.sku_1, e.sku_2, e.score
+                FROM compatibility_edges e
+                WHERE e.sku_1 IN (SELECT sku_2 FROM limited_candidates)
+                  AND e.sku_2 IN (SELECT sku_2 FROM limited_candidates)
+            )
+            -- Return both result sets combined with a type indicator
+            SELECT 'compatible' as result_type, sku_2 as sku_a, target_slot, score, NULL as sku_b
+            FROM limited_candidates
+            UNION ALL
+            SELECT 'cross' as result_type, sku_1 as sku_a, NULL as target_slot, score, sku_2 as sku_b
+            FROM cross_scores
+        """
+
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(query, sku_id, candidates_per_slot)
+
+        # Parse results
+        compatible_by_slot: dict[str, list[dict]] = {}
+        pair_scores: dict[tuple[str, str], float] = {}
+
+        for row in rows:
+            if row["result_type"] == "compatible":
+                # Compatible item result
+                slot_name = row["target_slot"].lower().strip()
+                if slot_name not in compatible_by_slot:
+                    compatible_by_slot[slot_name] = []
+                compatible_by_slot[slot_name].append({
+                    "sku": row["sku_a"],
+                    "score": float(row["score"]),
+                })
+                # Add base->item score
+                pair_scores[(sku_id, row["sku_a"])] = float(row["score"])
+                pair_scores[(row["sku_a"], sku_id)] = float(row["score"])
+            else:
+                # Cross-score result
+                sku1, sku2 = row["sku_a"], row["sku_b"]
+                score = float(row["score"])
+                pair_scores[(sku1, sku2)] = score
+                pair_scores[(sku2, sku1)] = score
+
+        # Sort each slot by score descending (UNION ALL may not preserve order)
+        for slot_name in compatible_by_slot:
+            compatible_by_slot[slot_name].sort(key=lambda x: (-x["score"], x["sku"]))
+
+        # Cache the compatible items
+        self._compatible_cache[sku_id] = compatible_by_slot
+
+        # Cache pair scores
+        for (s1, s2), score in pair_scores.items():
+            self._pair_score_cache[(s1, s2)] = score
+
+        # Mark that cross-scores have been fetched for this SKU/limit combo
+        cross_scores_cache_key = f"_cross_scores_fetched_{sku_id}_{candidates_per_slot}"
+        self._compatible_cache[cross_scores_cache_key] = True
+
+        return compatible_by_slot, pair_scores
 
     async def get_pair_score(self, sku1: str, sku2: str) -> Optional[float]:
         """Get the compatibility score between two SKUs."""

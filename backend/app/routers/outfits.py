@@ -183,22 +183,52 @@ async def generate_outfit(
 async def generate_looks(
     base_sku: str,
     num_looks: int = Query(10, ge=1, le=15),
+    force_recompute: bool = Query(False, description="Skip cache and recompute"),
 ):
     """
     Generate multiple complete outfit looks using the DCLG algorithm.
 
-    This endpoint generates thematically distinct looks where each look is
-    coherent within its dimension (occasion, aesthetic, color strategy).
-    Looks are NOT ranked against each other - each is equally valid.
+    This endpoint first checks for precomputed looks (instant response).
+    If not found, it generates looks on-demand.
 
     - **base_sku**: The starting item SKU
-    - **num_looks**: Number of looks to generate (1-5, default 3)
+    - **num_looks**: Number of looks to generate (1-15, default 10)
+    - **force_recompute**: Skip precomputed cache and generate fresh
 
     Returns complete outfit looks with:
     - Look name and description
     - Dimension used for theming (aesthetic, occasion, color)
     - Items organized by slot (base top, outerwear, bottom, footwear, accessory)
     """
+    from app.services.precomputed_looks import PrecomputedLooksService
+
+    # Try precomputed looks first (instant response)
+    if not force_recompute:
+        precomputed = await PrecomputedLooksService.get_looks(base_sku, num_looks)
+        if precomputed:
+            # Convert precomputed data to response model
+            response_looks = []
+            for look_dict in precomputed["looks"][:num_looks]:
+                response_looks.append(Look(
+                    id=look_dict["id"],
+                    name=look_dict["name"],
+                    description=look_dict["description"],
+                    dimension=look_dict["dimension"],
+                    dimension_value=look_dict["dimension_value"],
+                    items={
+                        slot: LookItem(**item_data)
+                        for slot, item_data in look_dict["items"].items()
+                    },
+                    slots_filled=look_dict["slots_filled"],
+                ))
+
+            return LooksResponse(
+                base_product=ProductResponse(**precomputed["base_product"]),
+                looks=response_looks,
+                total_looks=len(response_looks),
+            )
+
+    # Fall back to computing on-demand
     look_generator = get_look_generator()
 
     try:

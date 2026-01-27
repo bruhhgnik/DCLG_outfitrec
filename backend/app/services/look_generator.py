@@ -558,7 +558,11 @@ class LookGeneratorService:
         if cand_slot == "primary bottom":
             if self._is_statement_top(base) or self._has_statement_details(base):
                 if self._is_athleisure_bottom(candidate):
-                    if not self._has_streetwear_aesthetic(base):
+                    # Exception: athletic tops with functional "statement" details
+                    # (like mesh panels for breathability) should pair with athleisure
+                    if self._is_athletic_top(base):
+                        pass  # Allow athletic + athleisure pairing
+                    elif not self._has_streetwear_aesthetic(base):
                         return False
 
         if cand_slot == "primary bottom":
@@ -778,7 +782,7 @@ class LookGeneratorService:
         """
         Generate multiple thematically distinct looks for a base product.
 
-        Key optimization: Fetch ALL data upfront, then process in-memory.
+        Key optimization: Fetch ALL data upfront in ONE query, then process in-memory.
         """
         # 1. Fetch base product
         base_product = await ProductService.get_by_sku(base_sku)
@@ -789,15 +793,17 @@ class LookGeneratorService:
         if "image_url" not in base_product and "image_file" in base_product:
             base_product["image_url"] = base_product["image_file"]
 
-        # 2. Get compatibility graph and fetch all compatible items (ONE query)
-        graph = await get_compatibility_graph()
-        compatible_by_slot = await graph.get_all_compatible(base_sku)
-
-        # 3. Collect all compatible SKUs (limit per slot to reduce DB load)
+        # 2. Get compatibility graph and fetch compatible items + cross-scores in ONE query
         CANDIDATES_PER_SLOT = 25
+        graph = await get_compatibility_graph()
+        compatible_by_slot, pair_scores = await graph.get_compatible_with_cross_scores(
+            base_sku, candidates_per_slot=CANDIDATES_PER_SLOT
+        )
+
+        # 3. Collect all compatible SKUs
         all_compatible_skus = set()
         for slot_items in compatible_by_slot.values():
-            for item in slot_items[:CANDIDATES_PER_SLOT]:
+            for item in slot_items:
                 all_compatible_skus.add(item["sku"])
 
         if not all_compatible_skus:
@@ -813,25 +819,6 @@ class LookGeneratorService:
             products[p["sku_id"]] = p
         products[base_sku] = base_product
 
-        # 5. Build pair scores map - need scores between ALL candidates for coherent looks
-        # First add base_sku -> candidate scores from compatible_by_slot
-        pair_scores: Dict[Tuple[str, str], float] = {}
-        for slot_items in compatible_by_slot.values():
-            for item in slot_items:
-                sku2 = item["sku"]
-                score = item["score"]
-                pair_scores[(base_sku, sku2)] = score
-                pair_scores[(sku2, base_sku)] = score
-
-        # Fetch cross-item scores (candidate ↔ candidate) for coherent selection
-        # This is needed so the algorithm can pick items that match EACH OTHER, not just the base
-        all_skus_list = list(all_compatible_skus)
-        cross_scores = await graph.calculate_outfit_score(all_skus_list)
-        for pair_key, score in cross_scores.get("pair_scores", {}).items():
-            sku1, sku2 = pair_key.split(":")
-            pair_scores[(sku1, sku2)] = score
-            pair_scores[(sku2, sku1)] = score
-
         # 6. Filter to valid pairs
         valid_candidates = {
             sku: p for sku, p in products.items()
@@ -845,6 +832,19 @@ class LookGeneratorService:
         occasion_clusters = self.cluster_by_occasion(valid_candidates, base_product)
         aesthetic_clusters = self.cluster_by_aesthetic(valid_candidates, base_product)
         color_clusters = self.cluster_by_color(valid_candidates, base_product)
+
+        # Build a global score map for sorting cluster SKUs by base compatibility
+        # This ensures deterministic iteration order matching the old JSON-based code
+        sku_base_score: Dict[str, float] = {}
+        for slot_items in compatible_by_slot.values():
+            for item in slot_items:
+                if item["sku"] not in sku_base_score:
+                    sku_base_score[item["sku"]] = item["score"]
+
+        # Sort valid_candidates by base score before clustering
+        # This ensures clusters are built with items in score order (matching old behavior)
+        sorted_valid_skus = sorted(valid_candidates.keys(), key=lambda sku: (-sku_base_score.get(sku, 0), sku))
+        valid_candidates = {sku: valid_candidates[sku] for sku in sorted_valid_skus}
 
         # 8. Generate looks from different dimensions
         looks = []
@@ -892,10 +892,14 @@ class LookGeneratorService:
             if not best_cluster:
                 break
 
+            # Sort cluster SKUs by base score (descending) then alphabetically
+            # This ensures deterministic order matching old code behavior
+            sorted_cluster = sorted(best_cluster, key=lambda sku: (-sku_base_score.get(sku, 0), sku))
+
             look_counter += 1
             look = self._build_look_from_cluster(
                 base_product=base_product,
-                cluster_skus=best_cluster,
+                cluster_skus=sorted_cluster,
                 all_products=products,
                 compatible_by_slot=compatible_by_slot,
                 pair_scores=pair_scores,
@@ -914,7 +918,8 @@ class LookGeneratorService:
             used_dimensions.add((best_dimension, best_value))
 
         # Phase 2: Generate additional looks with extended names
-        all_valid_skus = list(valid_candidates.keys())
+        # Sort by base score for deterministic order
+        all_valid_skus = sorted(valid_candidates.keys(), key=lambda sku: (-sku_base_score.get(sku, 0), sku))
         extended_idx = 0
 
         while len(looks) < num_looks and extended_idx < len(extended_names):
@@ -1032,6 +1037,11 @@ class LookGeneratorService:
                             slot_candidates.append(sku)
 
             if slot_candidates:
+                # Sort candidates by base compatibility score (from compatible_by_slot)
+                # This ensures deterministic tie-breaking when cross-scores are equal
+                slot_score_map = {item["sku"]: item["score"] for item in compatible_by_slot.get(slot, [])}
+                slot_candidates.sort(key=lambda sku: (-slot_score_map.get(sku, 0), sku))
+
                 best_sku = self.select_best_for_slot(
                     slot, slot_candidates, current_items, all_products, pair_scores
                 )
