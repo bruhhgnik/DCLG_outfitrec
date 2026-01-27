@@ -61,3 +61,4 @@ look_generator/
 *.ps1
 test_*.py
 .claude/
+backend/compatibility_graph.json

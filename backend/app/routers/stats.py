@@ -103,14 +103,9 @@ async def health_check():
     except Exception as e:
         db_status = f"unhealthy: {str(e)}"
 
-    try:
-        graph = await get_compatibility_graph()
-        stats = await graph.get_stats()
-        graph_products = stats.get("unique_products", 0)
-        graph_loaded = graph_products > 0
-    except Exception:
-        graph_loaded = False
-        graph_products = 0
+    graph = await get_compatibility_graph()
+    graph_loaded = len(graph.graph) > 0
+    graph_products = len(graph.graph)
 
     return {
         "status": "ok" if db_status == "healthy" and graph_loaded else "degraded",
