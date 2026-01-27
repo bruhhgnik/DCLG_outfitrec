@@ -140,14 +140,14 @@ export default function LooksSection({ baseProduct }: LooksSectionProps) {
           return (
             <div
               key={look.id}
-              className="flex-shrink-0 w-[280px] sm:w-[420px] lg:w-[520px] bg-white border border-gray-200 rounded-lg p-3 sm:p-4 lg:p-5 relative"
+              className="flex-shrink-0 w-[280px] sm:w-[420px] lg:w-[520px] bg-white border border-gray-200 rounded-lg p-3 sm:p-4 lg:p-5 relative flex flex-col min-h-[320px] sm:min-h-[380px]"
               style={{ scrollSnapAlign: "start" }}
             >
               {/* Look Header */}
               <h3 className="text-sm sm:text-base font-medium mb-3 sm:mb-4">Look {index + 1}</h3>
 
               {/* Content wrapper with blur effect */}
-              <div className={`transition-all duration-200 ${isAnimating ? "blur-sm" : ""}`}>
+              <div className={`flex-1 transition-all duration-200 ${isAnimating ? "blur-sm" : ""}`}>
                 <div className="flex gap-3 sm:gap-4 lg:gap-5 items-start">
                   {/* Left: Base Product Image */}
                   <div className="w-[100px] sm:w-[140px] lg:w-[160px] flex-shrink-0">
@@ -209,7 +209,7 @@ export default function LooksSection({ baseProduct }: LooksSectionProps) {
               <button
                 onClick={() => handleGetThisLook(look, index)}
                 disabled={isAnimating}
-                className="w-full mt-4 py-2.5 sm:py-3 bg-black text-white text-xs sm:text-sm font-medium hover:bg-gray-800 transition-colors disabled:opacity-50"
+                className="w-full mt-auto pt-4 py-2.5 sm:py-3 bg-black text-white text-xs sm:text-sm font-medium hover:bg-gray-800 transition-colors disabled:opacity-50"
               >
                 Get This Look
               </button>
