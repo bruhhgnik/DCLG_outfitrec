@@ -28,8 +28,8 @@ async def lifespan(app: FastAPI):
 
     print("Loading compatibility graph...")
     graph = await get_compatibility_graph()
-    stats = await graph.get_stats()
-    print(f"  Loaded {stats['total_edges']:,} edges for {stats['unique_products']} products")
+    graph_stats = await graph.get_stats()
+    print(f"  Loaded {graph_stats.get('total_edges', 0):,} edges for {graph_stats.get('total_products', len(graph.graph))} products")
 
     print("Initializing look generator...")
     get_look_generator()
