@@ -118,3 +118,10 @@ export async function getHealthStatus(): Promise<{
 }> {
   return fetchApi("/api/v1/stats/health");
 }
+
+// Site config
+export async function getSiteConfig(): Promise<{
+  hero_video_url: string;
+}> {
+  return fetchApi("/api/v1/stats/config");
+}

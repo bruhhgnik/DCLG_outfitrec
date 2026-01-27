@@ -81,6 +81,17 @@ async def get_product_stats():
     }
 
 
+@router.get("/config")
+async def get_site_config():
+    """Get site configuration including media assets."""
+    # You can later change this to a Cloudinary URL or any other CDN
+    # without updating the frontend
+    return {
+        "hero_video_url": "/videos/hero.mp4",
+        # Add more configurable assets here as needed
+    }
+
+
 @router.get("/health")
 async def health_check():
     """Check API and database health."""
