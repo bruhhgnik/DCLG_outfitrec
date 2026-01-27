@@ -132,7 +132,7 @@ class CompatibilityGraph:
             SELECT sku_2, target_slot, score
             FROM compatibility_edges
             WHERE sku_1 = $1
-            ORDER BY target_slot, score DESC
+            ORDER BY LOWER(target_slot), score DESC
         """
 
         async with pool.acquire() as conn:
