@@ -124,6 +124,22 @@ class ProductFilter(BaseModel):
     min_formality_score: Optional[int] = None
     max_formality_score: Optional[int] = None
 
+    def has_any_filter(self) -> bool:
+        """Check if any filter is set."""
+        return any([
+            self.category,
+            self.functional_slot,
+            self.gender,
+            self.brand,
+            self.primary_color,
+            self.formality_level,
+            self.occasion,
+            self.season,
+            self.style,
+            self.min_formality_score is not None,
+            self.max_formality_score is not None,
+        ])
+
 
 class PaginatedResponse(BaseModel):
     items: list[ProductResponse]

@@ -43,6 +43,14 @@ class ProductService:
         filters: Optional[ProductFilter] = None,
     ) -> tuple[list[dict], int]:
         """Get paginated products with optional filters."""
+        # Fast path: no filters = use in-memory cache
+        if filters is None or not filters.has_any_filter():
+            cache = await _get_cached_products()
+            all_products = list(cache.values())
+            total = len(all_products)
+            offset = (page - 1) * page_size
+            return all_products[offset:offset + page_size], total
+
         pool = await get_db()
 
         conditions = []
