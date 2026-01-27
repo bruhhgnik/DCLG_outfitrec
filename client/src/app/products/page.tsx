@@ -1,123 +1,89 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef, Suspense } from "react";
+import { useCallback, useRef, useEffect, Suspense, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { Product } from "@/types";
+import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
 import { getProducts, getCategories, getBrands, getColors } from "@/lib/api";
 import ProductGrid from "@/components/ProductGrid";
 import FilterSidebar from "@/components/FilterSidebar";
 import LoadingSpinner from "@/components/LoadingSpinner";
 
-const PAGE_SIZE = 24; // More products per batch for infinite scroll
+const PAGE_SIZE = 24;
 
 function ProductsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-
-  const [products, setProducts] = useState<Product[]>([]);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [filtersLoading, setFiltersLoading] = useState(true);
-  const [showFilters, setShowFilters] = useState(false);
-
-  const [categories, setCategories] = useState<string[]>([]);
-  const [brands, setBrands] = useState<string[]>([]);
-  const [colors, setColors] = useState<string[]>([]);
-
   const loaderRef = useRef<HTMLDivElement>(null);
+  const [showFilters, setShowFilters] = useState(false);
 
   const selectedCategory = searchParams.get("category") || undefined;
   const selectedBrand = searchParams.get("brand") || undefined;
   const selectedColor = searchParams.get("color") || undefined;
   const selectedSlot = searchParams.get("slot") || undefined;
 
-  // Fetch filter options
-  useEffect(() => {
-    async function fetchFilters() {
-      try {
-        const [catRes, brandRes, colorRes] = await Promise.all([
-          getCategories(),
-          getBrands(),
-          getColors(),
-        ]);
-        setCategories(catRes.categories);
-        setBrands(brandRes.brands);
-        setColors(colorRes.colors);
-      } catch (error) {
-        console.error("Failed to fetch filters:", error);
-      } finally {
-        setFiltersLoading(false);
-      }
-    }
-    fetchFilters();
-  }, []);
+  // Fetch filter options with long cache (rarely change)
+  const { data: categoriesData, isLoading: categoriesLoading } = useQuery({
+    queryKey: ["categories"],
+    queryFn: getCategories,
+    staleTime: 30 * 60 * 1000, // 30 minutes
+  });
 
-  // Reset and fetch initial products when filters change
-  useEffect(() => {
-    async function fetchInitialProducts() {
-      setLoading(true);
-      setProducts([]);
-      setCurrentPage(1);
-      setHasMore(true);
+  const { data: brandsData, isLoading: brandsLoading } = useQuery({
+    queryKey: ["brands"],
+    queryFn: getBrands,
+    staleTime: 30 * 60 * 1000,
+  });
 
-      try {
-        const response = await getProducts({
-          page: 1,
-          page_size: PAGE_SIZE,
-          category: selectedCategory,
-          brand: selectedBrand,
-          primary_color: selectedColor,
-          functional_slot: selectedSlot,
-        });
-        setProducts(response.items);
-        setTotal(response.total);
-        setHasMore(response.items.length === PAGE_SIZE && response.total > PAGE_SIZE);
-      } catch (error) {
-        console.error("Failed to fetch products:", error);
-        setProducts([]);
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchInitialProducts();
-  }, [selectedCategory, selectedBrand, selectedColor, selectedSlot]);
+  const { data: colorsData, isLoading: colorsLoading } = useQuery({
+    queryKey: ["colors"],
+    queryFn: getColors,
+    staleTime: 30 * 60 * 1000,
+  });
 
-  // Load more products
-  const loadMore = useCallback(async () => {
-    if (loadingMore || !hasMore) return;
+  const filtersLoading = categoriesLoading || brandsLoading || colorsLoading;
+  const categories = categoriesData?.categories ?? [];
+  const brands = brandsData?.brands ?? [];
+  const colors = colorsData?.colors ?? [];
 
-    setLoadingMore(true);
-    const nextPage = currentPage + 1;
-
-    try {
-      const response = await getProducts({
-        page: nextPage,
+  // Infinite query for products
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading,
+  } = useInfiniteQuery({
+    queryKey: ["products", selectedCategory, selectedBrand, selectedColor, selectedSlot],
+    queryFn: ({ pageParam = 1 }) =>
+      getProducts({
+        page: pageParam,
         page_size: PAGE_SIZE,
         category: selectedCategory,
         brand: selectedBrand,
         primary_color: selectedColor,
         functional_slot: selectedSlot,
-      });
+      }),
+    getNextPageParam: (lastPage, allPages) => {
+      const totalFetched = allPages.reduce((sum, page) => sum + page.items.length, 0);
+      if (lastPage.items.length === PAGE_SIZE && totalFetched < lastPage.total) {
+        return allPages.length + 1;
+      }
+      return undefined;
+    },
+    initialPageParam: 1,
+    staleTime: 2 * 60 * 1000, // 2 minutes
+  });
 
-      setProducts((prev) => [...prev, ...response.items]);
-      setCurrentPage(nextPage);
-      setHasMore(response.items.length === PAGE_SIZE && products.length + response.items.length < response.total);
-    } catch (error) {
-      console.error("Failed to load more products:", error);
-    } finally {
-      setLoadingMore(false);
-    }
-  }, [currentPage, hasMore, loadingMore, selectedCategory, selectedBrand, selectedColor, selectedSlot, products.length]);
+  // Flatten products from all pages
+  const products = data?.pages.flatMap((page) => page.items) ?? [];
+  const total = data?.pages[0]?.total ?? 0;
 
   // Intersection Observer for infinite scroll
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && hasMore && !loadingMore && !loading) {
-          loadMore();
+        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage && !isLoading) {
+          fetchNextPage();
         }
       },
       { threshold: 0.1, rootMargin: "100px" }
@@ -128,13 +94,12 @@ function ProductsContent() {
     }
 
     return () => observer.disconnect();
-  }, [hasMore, loadingMore, loading, loadMore]);
+  }, [hasNextPage, isFetchingNextPage, isLoading, fetchNextPage]);
 
   const updateFilters = useCallback(
     (newFilters: Record<string, string | undefined>) => {
       const params = new URLSearchParams();
 
-      // Build new params from current + new filters
       const allFilters = {
         category: selectedCategory,
         brand: selectedBrand,
@@ -185,12 +150,15 @@ function ProductsContent() {
           }`}
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.5}
+              d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
+            />
           </svg>
           <span className="text-sm">Filter</span>
-          {hasActiveFilters && (
-            <span className="w-2 h-2 bg-white rounded-full"></span>
-          )}
+          {hasActiveFilters && <span className="w-2 h-2 bg-white rounded-full"></span>}
         </button>
       </div>
 
@@ -221,7 +189,7 @@ function ProductsContent() {
 
         {/* Product Grid */}
         <div className="flex-1">
-          {loading ? (
+          {isLoading ? (
             <LoadingSpinner />
           ) : (
             <>
@@ -229,13 +197,13 @@ function ProductsContent() {
 
               {/* Infinite scroll loader */}
               <div ref={loaderRef} className="py-8 flex justify-center">
-                {loadingMore && (
+                {isFetchingNextPage && (
                   <div className="flex items-center gap-2 text-gray-500">
                     <div className="w-5 h-5 border-2 border-gray-300 border-t-black rounded-full animate-spin"></div>
                     <span className="text-sm">Loading more...</span>
                   </div>
                 )}
-                {!hasMore && products.length > 0 && (
+                {!hasNextPage && products.length > 0 && (
                   <p className="text-sm text-gray-400">You&apos;ve seen all {total} products</p>
                 )}
               </div>

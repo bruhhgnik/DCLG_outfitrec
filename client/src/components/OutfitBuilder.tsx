@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
 import { Product, CompatibleItem } from "@/types";
 import { generateOutfit, scoreOutfit } from "@/lib/api";
 
@@ -21,64 +22,57 @@ const SLOT_LABELS: Record<string, string> = {
 };
 
 export default function OutfitBuilder({ baseProduct }: OutfitBuilderProps) {
-  const [recommendations, setRecommendations] = useState<Record<string, CompatibleItem[]>>({});
   const [selectedItems, setSelectedItems] = useState<Record<string, CompatibleItem | null>>({});
-  const [outfitScore, setOutfitScore] = useState<number | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
+  // Fetch recommendations with caching
+  const {
+    data: recommendationsData,
+    isLoading: loading,
+    error,
+  } = useQuery({
+    queryKey: ["outfit-recommendations", baseProduct.sku_id],
+    queryFn: () =>
+      generateOutfit(baseProduct.sku_id, {
+        limit_per_slot: 6,
+        min_score: 0.5,
+      }),
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+  });
+
+  const recommendations = recommendationsData?.recommendations ?? {};
+
+  // Auto-select top items when recommendations load
   useEffect(() => {
-    async function fetchRecommendations() {
-      try {
-        setLoading(true);
-        const result = await generateOutfit(baseProduct.sku_id, {
-          limit_per_slot: 6,
-          min_score: 0.5,
-        });
-        setRecommendations(result.recommendations);
-
-        // Auto-select top item from each slot
-        const autoSelected: Record<string, CompatibleItem | null> = {};
-        Object.entries(result.recommendations).forEach(([slot, items]) => {
-          if (items.length > 0) {
-            autoSelected[slot] = items[0];
-          }
-        });
-        setSelectedItems(autoSelected);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load recommendations");
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchRecommendations();
-  }, [baseProduct.sku_id]);
-
-  // Calculate outfit score when selection changes
-  useEffect(() => {
-    async function calculateScore() {
-      const skuIds = [
-        baseProduct.sku_id,
-        ...Object.values(selectedItems)
-          .filter((item): item is CompatibleItem => item !== null)
-          .map((item) => item.sku_id),
-      ];
-
-      if (skuIds.length >= 2) {
-        try {
-          const result = await scoreOutfit(skuIds);
-          setOutfitScore(result.average_score);
-        } catch {
-          setOutfitScore(null);
+    if (recommendationsData?.recommendations) {
+      const autoSelected: Record<string, CompatibleItem | null> = {};
+      Object.entries(recommendationsData.recommendations).forEach(([slot, items]) => {
+        if (items.length > 0) {
+          autoSelected[slot] = items[0];
         }
-      } else {
-        setOutfitScore(null);
-      }
+      });
+      setSelectedItems(autoSelected);
     }
+  }, [recommendationsData]);
 
-    calculateScore();
+  // Build SKU list for scoring
+  const skuIdsForScoring = useMemo(() => {
+    return [
+      baseProduct.sku_id,
+      ...Object.values(selectedItems)
+        .filter((item): item is CompatibleItem => item !== null)
+        .map((item) => item.sku_id),
+    ].sort(); // Sort for stable query key
   }, [selectedItems, baseProduct.sku_id]);
+
+  // Score outfit with debounced query (only fetches when SKUs change)
+  const { data: scoreData } = useQuery({
+    queryKey: ["outfit-score", skuIdsForScoring],
+    queryFn: () => scoreOutfit(skuIdsForScoring),
+    enabled: skuIdsForScoring.length >= 2,
+    staleTime: 10 * 60 * 1000, // Cache scores for 10 minutes
+  });
+
+  const outfitScore = scoreData?.average_score ?? null;
 
   const getImageUrl = (item: CompatibleItem) => {
     return item.product?.image_url || "/placeholder.svg";
@@ -104,7 +98,7 @@ export default function OutfitBuilder({ baseProduct }: OutfitBuilderProps) {
   if (error) {
     return (
       <div className="text-center py-8">
-        <p className="text-red-500">{error}</p>
+        <p className="text-red-500">{error.message}</p>
       </div>
     );
   }

@@ -20,10 +20,6 @@ class Settings(BaseSettings):
     supabase_db_user: str = "postgres"
     supabase_db_password: str
 
-    # Paths
-    compatibility_graph_path: str = "../compatibility_graph_scored.json"
-    product_metadata_path: str = "../product_metadata.json"
-
     # API
     api_title: str = "DCLG Outfit Recommender API"
     api_version: str = "1.0.0"

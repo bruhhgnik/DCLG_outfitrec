@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Product, Look, LooksResponse, LookItem } from "@/types";
+import { useQuery } from "@tanstack/react-query";
+import { Product, Look, LookItem } from "@/types";
 import { generateLooks } from "@/lib/api";
 import { useCart } from "@/context/CartContext";
 
@@ -12,29 +13,21 @@ interface LooksSectionProps {
 }
 
 export default function LooksSection({ baseProduct }: LooksSectionProps) {
-  const [looks, setLooks] = useState<Look[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [animatingLook, setAnimatingLook] = useState<{ id: string; count: number } | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const { addLookToCart } = useCart();
 
-  useEffect(() => {
-    async function fetchLooks() {
-      try {
-        setLoading(true);
-        setError(null);
-        const result: LooksResponse = await generateLooks(baseProduct.sku_id, 10);
-        setLooks(result.looks);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load looks");
-      } finally {
-        setLoading(false);
-      }
-    }
+  const {
+    data,
+    isLoading: loading,
+    error,
+  } = useQuery({
+    queryKey: ["looks", baseProduct.sku_id],
+    queryFn: () => generateLooks(baseProduct.sku_id, 10),
+    staleTime: 5 * 60 * 1000, // Cache looks for 5 minutes
+  });
 
-    fetchLooks();
-  }, [baseProduct.sku_id]);
+  const looks = data?.looks ?? [];
 
   const scrollLeft = () => {
     if (scrollContainerRef.current) {
@@ -102,7 +95,7 @@ export default function LooksSection({ baseProduct }: LooksSectionProps) {
     );
   }
 
-  if (error || looks.length === 0) {
+  if (error || (!loading && looks.length === 0)) {
     return null;
   }
 

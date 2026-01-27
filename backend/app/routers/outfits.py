@@ -34,8 +34,8 @@ async def get_compatible_items(
     - **min_score**: Minimum compatibility score (0.0 - 1.0)
     - **include_products**: Include full product details in response
     """
-    graph = get_compatibility_graph()
-    compatible = graph.get_compatible_items(sku_id, slot, limit, min_score)
+    graph = await get_compatibility_graph()
+    compatible = await graph.get_compatible_items(sku_id, slot, limit, min_score)
 
     if not compatible:
         # Check if product exists
@@ -114,8 +114,8 @@ async def score_outfit(request: OutfitScoreRequest):
             detail=f"Products not found: {', '.join(missing)}",
         )
 
-    graph = get_compatibility_graph()
-    result = graph.calculate_outfit_score(request.sku_ids)
+    graph = await get_compatibility_graph()
+    result = await graph.calculate_outfit_score(request.sku_ids)
 
     return OutfitScoreResponse(
         sku_ids=request.sku_ids,
@@ -145,8 +145,8 @@ async def generate_outfit(
     if not base_product:
         raise HTTPException(status_code=404, detail="Base product not found")
 
-    graph = get_compatibility_graph()
-    compatible = graph.get_compatible_items(
+    graph = await get_compatibility_graph()
+    compatible = await graph.get_compatible_items(
         base_sku, slot=None, limit=limit_per_slot, min_score=min_score
     )
 

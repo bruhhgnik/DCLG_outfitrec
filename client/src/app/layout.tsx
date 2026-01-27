@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import Header from "@/components/Header";
 import { CartProvider } from "@/context/CartContext";
+import QueryProvider from "@/providers/QueryProvider";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
@@ -87,15 +88,17 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" rel="stylesheet" />
       </head>
       <body className="antialiased min-h-screen uppercase" style={{ fontFamily: "'Inter', sans-serif" }}>
-        <CartProvider>
-          <Header />
-          <main>{children}</main>
-          <footer className="border-t border-gray-200 mt-16 py-8">
-            <div className="px-4 sm:px-8 lg:px-16 xl:px-24 text-center text-sm text-gray-500">
-              <p>Outfit Studio - AI-Powered Fashion Recommendations</p>
-            </div>
-          </footer>
-        </CartProvider>
+        <QueryProvider>
+          <CartProvider>
+            <Header />
+            <main>{children}</main>
+            <footer className="border-t border-gray-200 mt-16 py-8">
+              <div className="px-4 sm:px-8 lg:px-16 xl:px-24 text-center text-sm text-gray-500">
+                <p>Outfit Studio - AI-Powered Fashion Recommendations</p>
+              </div>
+            </footer>
+          </CartProvider>
+        </QueryProvider>
       </body>
     </html>
   );

@@ -27,11 +27,12 @@ async def lifespan(app: FastAPI):
     print(f"  Cached {len(cache)} products")
 
     print("Loading compatibility graph...")
-    get_compatibility_graph()
+    graph = await get_compatibility_graph()
+    stats = await graph.get_stats()
+    print(f"  Loaded {stats['total_edges']:,} edges for {stats['unique_products']} products")
 
-    print("Loading look generator with optimized indexes...")
-    lg = get_look_generator()
-    print(f"  Pair index: {len(lg._pair_index):,} entries")
+    print("Initializing look generator...")
+    get_look_generator()
 
     print(f"Startup complete in {time.time() - start:.2f}s!")
 
