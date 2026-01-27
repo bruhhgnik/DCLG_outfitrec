@@ -56,9 +56,9 @@ async def export_graph():
     print("=" * 60)
     print()
 
-    # Connect to database
+    # Connect to database (disable prepared statements for pgbouncer compatibility)
     print("1. Connecting to database...")
-    conn = await asyncpg.connect(dsn)
+    conn = await asyncpg.connect(dsn, statement_cache_size=0)
 
     try:
         # Get total count
