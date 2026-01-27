@@ -813,8 +813,8 @@ class LookGeneratorService:
             products[p["sku_id"]] = p
         products[base_sku] = base_product
 
-        # 5. Build pair scores map from compatible_by_slot data (no extra queries)
-        # This is the KEY optimization - we already have scores from get_all_compatible
+        # 5. Build pair scores map - need scores between ALL candidates for coherent looks
+        # First add base_sku -> candidate scores from compatible_by_slot
         pair_scores: Dict[Tuple[str, str], float] = {}
         for slot_items in compatible_by_slot.values():
             for item in slot_items:
@@ -822,6 +822,15 @@ class LookGeneratorService:
                 score = item["score"]
                 pair_scores[(base_sku, sku2)] = score
                 pair_scores[(sku2, base_sku)] = score
+
+        # Fetch cross-item scores (candidate ↔ candidate) for coherent selection
+        # This is needed so the algorithm can pick items that match EACH OTHER, not just the base
+        all_skus_list = list(all_compatible_skus)
+        cross_scores = await graph.calculate_outfit_score(all_skus_list)
+        for pair_key, score in cross_scores.get("pair_scores", {}).items():
+            sku1, sku2 = pair_key.split(":")
+            pair_scores[(sku1, sku2)] = score
+            pair_scores[(sku2, sku1)] = score
 
         # 6. Filter to valid pairs
         valid_candidates = {
