@@ -43,11 +43,25 @@ docker compose down
 
 Pick any product and the system generates multiple outfit combinations - not just "items that match" but coherent looks like "Street Style" or "Monochrome Flow".
 
-### How it works
+## How It Works
 
-1. Pre-computed compatibility scores between all product pairs stored in PostgreSQL
-2. Algorithm clusters compatible items by dimensions (occasion, aesthetic, color)
-3. Builds looks that are internally coherent within each dimension
+### The Compatibility Graph
+
+I pre-computed compatibility scores (0-1) for every product pair and stored them in Postgres. ~400K edges for 692 products. Scores account for color harmony, style alignment, occasion, and season.
+
+### The Algorithm (DCLG)
+
+When you pick a product:
+
+1. Pull all compatible items from the graph (single query)
+2. Filter out bad pairs - formality gaps, season mismatches, silhouette conflicts (no knitwear under hoodies, no statement tops with athleisure bottoms, etc.)
+3. Cluster what's left by dimension - occasion (casual, gym, date), aesthetic (streetwear, minimalist), or color strategy (monochrome, neutral, accent)
+4. For each cluster, greedily pick the best item per slot that fits with what's already in the look
+5. Make sure every look has footwear and an accessory
+
+### Why it's fast
+
+Everything is precomputed. The API just does one indexed DB query, filters in memory, and returns. Response time is 50-80ms.
 
 ### Stack
 
