@@ -77,6 +77,25 @@ GET /api/v1/products
 GET /api/v1/products/{sku}
 ```
 
+### Performance Challenges
+
+**Problem 1: Memory**
+- Original approach loaded a 46MB JSON file into memory on startup
+- 392K edges for 800 products = ~140MB RAM
+- Would scale to ~7GB at 10K products - not viable for serverless
+
+**Solution:** Moved to PostgreSQL. Memory dropped from ~140MB to ~15MB.
+
+**Problem 2: Cold query latency**
+- First DB query after migration was ~230ms (vs <1ms with in-memory JSON)
+
+**Solution:**
+- Added indexes on `(sku_1, target_slot, sort_order)` and `(sku_1, score DESC)`
+- Server-side TTL cache (5 min) - repeat queries hit cache at ~5ms
+- Client-side TanStack Query cache - same user gets instant results
+
+**Current performance:** 50-80ms response time for generate-looks.
+
 ## License
 
 MIT
