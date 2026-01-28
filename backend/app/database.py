@@ -1,5 +1,4 @@
 import asyncpg
-from contextlib import asynccontextmanager
 from typing import Optional
 
 from app.config import get_settings
@@ -13,15 +12,13 @@ class Database:
     @classmethod
     async def connect(cls):
         if cls.pool is None:
+            database_url = settings.get_database_url()
+            print(f"  Connecting to database...")
             cls.pool = await asyncpg.create_pool(
-                host=settings.supabase_db_host,
-                port=settings.supabase_db_port,
-                database=settings.supabase_db_name,
-                user=settings.supabase_db_user,
-                password=settings.supabase_db_password,
+                database_url,
                 min_size=2,
                 max_size=10,
-                statement_cache_size=0,  # Required for pgbouncer transaction mode
+                statement_cache_size=0,  # Required for pgbouncer/transaction mode
             )
 
     @classmethod

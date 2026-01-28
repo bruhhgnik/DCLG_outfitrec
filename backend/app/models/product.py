@@ -153,10 +153,10 @@ class GraphStats(BaseModel):
     total_products: int
     total_edges: int
     avg_score: float
-    avg_top5_score: float
-    high_score_pct: float
-    score_distribution: dict[str, int]
-    slot_averages: dict[str, float]
+    avg_top5_score: Optional[float] = None
+    high_score_pct: Optional[float] = None
+    score_distribution: Optional[dict[str, int]] = None
+    slot_averages: Optional[dict[str, float]] = None
 
 
 # Look Generation Models

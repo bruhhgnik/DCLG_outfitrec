@@ -104,8 +104,9 @@ async def health_check():
         db_status = f"unhealthy: {str(e)}"
 
     graph = await get_compatibility_graph()
-    graph_loaded = len(graph.graph) > 0
-    graph_products = len(graph.graph)
+    graph_stats = await graph.get_stats()
+    graph_loaded = graph_stats.get("total_edges", 0) > 0
+    graph_products = graph_stats.get("total_products", 0)
 
     return {
         "status": "ok" if db_status == "healthy" and graph_loaded else "degraded",
