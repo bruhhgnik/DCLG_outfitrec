@@ -179,7 +179,7 @@ async def generate_outfit(
     }
 
 
-@router.post("/generate-looks", response_model=LooksResponse)
+@router.get("/generate-looks", response_model=LooksResponse)
 async def generate_looks(
     base_sku: str,
     num_looks: int = Query(10, ge=1, le=15),
