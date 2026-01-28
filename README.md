@@ -3,7 +3,7 @@
 A fashion recommendation system that generates complete outfit looks from any starting piece using a compatibility graph and dimension-based clustering.
 
 **Data Source:** Products come from the provided CSV + ~300 additional products scraped from StockX using a custom scraper I built to efficiently extract product details.
-
+https://github.com/bruhhgnik/stockx-scraper
 ---
 
 ## Project Structure
