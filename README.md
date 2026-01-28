@@ -2,6 +2,49 @@
 
 A fashion recommendation system that generates complete outfit looks from any starting piece using a compatibility graph and dimension-based clustering.
 
+**Data Source:** Products come from the provided CSV + ~300 additional products scraped from StockX using a custom scraper I built to efficiently extract product details.
+
+---
+
+## Project Structure
+
+```
+├── backend/
+│   ├── app/
+│   │   ├── main.py                 # FastAPI app entry point
+│   │   ├── config.py               # Environment variables
+│   │   ├── database.py             # Postgres connection pool
+│   │   ├── models/
+│   │   │   └── product.py          # Pydantic schemas
+│   │   ├── routers/
+│   │   │   ├── products.py         # /products endpoints
+│   │   │   ├── outfits.py          # /outfits endpoints (generate-looks)
+│   │   │   └── stats.py            # /stats endpoints (health check)
+│   │   └── services/
+│   │       ├── product.py          # Product DB queries
+│   │       ├── compatibility.py    # Compatibility graph queries
+│   │       └── look_generator.py   # DCLG algorithm
+│   └── run.py                      # Dev server launcher
+├── client/
+│   └── src/
+│       ├── app/
+│       │   ├── page.tsx            # Home page
+│       │   ├── products/page.tsx   # Product listing
+│       │   └── product/[sku]/      # Product detail + looks
+│       ├── components/
+│       │   ├── LooksSection.tsx    # Renders generated outfits
+│       │   ├── ProductCard.tsx     # Product thumbnail
+│       │   └── FilterSidebar.tsx   # Category/brand filters
+│       └── lib/
+│           └── api.ts              # API client
+├── docker-compose.yml              # Local dev setup
+├── Dockerfile                      # Backend container
+├── seed_db.py                      # Seeds Postgres with products + edges
+└── compatibility_graph_scored.json # Pre-computed compatibility data
+```
+
+---
+
 ## Local Setup
 
 ### Prerequisites
