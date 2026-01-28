@@ -88,9 +88,13 @@ Pick any product and the system generates multiple outfit combinations - not jus
 
 ## How It Works
 
+### Metadata Extraction
+
+Each product image was analyzed using Claude's vision model to extract structured metadata - color, material, style tags, occasion, formality level, season, design elements. This metadata is stored per SKU and is what the algorithm uses to determine compatibility.
+
 ### The Compatibility Graph
 
-I pre-computed compatibility scores (0-1) for every product pair and stored them in Postgres. ~400K edges for 692 products. Scores account for color harmony, style alignment, occasion, and season.
+I pre-computed compatibility scores (0-1) for every product pair using the extracted metadata and stored them in Postgres. ~400K edges for 692 products. Scores account for color harmony, style alignment, occasion, and season.
 
 ### The Algorithm (DCLG)
 
