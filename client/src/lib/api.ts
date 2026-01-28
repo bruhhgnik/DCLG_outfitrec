@@ -104,9 +104,7 @@ export async function generateLooks(
   const searchParams = new URLSearchParams();
   searchParams.append("base_sku", baseSku);
   searchParams.append("num_looks", String(numLooks));
-  return fetchApi<LooksResponse>(`/api/v1/outfits/generate-looks?${searchParams.toString()}`, {
-    method: "POST",
-  });
+  return fetchApi<LooksResponse>(`/api/v1/outfits/generate-looks?${searchParams.toString()}`);
 }
 
 // Health check
